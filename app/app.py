@@ -7,7 +7,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://hl7-patient-write-juanita-066.onrender.com"],  # Permitir solo este dominio
+    allow_origins=["https://hl7-patient-write-juanita-066.onrender.com","https://appointment-write-juanita.onrender.com"],  # Permitir solo este dominio
     allow_credentials=True,
     allow_methods=["*"],  # Permitir todos los métodos (GET, POST, etc.)
     allow_headers=["*"],  # Permitir todos los encabezados
@@ -39,6 +39,15 @@ async def add_patient(request: Request):
     status,patient_id = WritePatient(new_patient_dict)
     if status=='success':
         return {"_id":patient_id}  # Return patient id
+    else:
+        raise HTTPException(status_code=500, detail=f"Validating error: {status}")
+@app.post("/appointment", response_model=dict)
+async def add_appointment(request: Request):
+    new_appointment_dict = dict(await request.json())
+    status, appointment_id = WriteAppointment(new_appointment_dict)
+    
+    if status == 'success':
+        return {"_id": appointment_id}  # Retornar ID de la cita
     else:
         raise HTTPException(status_code=500, detail=f"Validating error: {status}")
 from fastapi import HTTPException, Request 
