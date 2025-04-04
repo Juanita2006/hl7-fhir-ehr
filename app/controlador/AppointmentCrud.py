@@ -18,5 +18,5 @@ def WriteAppointment(appointment_dict: dict):
         result = collection.insert_one(validated_appointment_json)
         if result:
             inserted_id = str(result.inserted_id)
-            return "success
+            return "success"
 
