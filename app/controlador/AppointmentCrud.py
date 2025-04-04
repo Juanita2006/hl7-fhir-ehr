@@ -7,16 +7,19 @@ collection = connect_to_mongodb("JYI", "2626")  # Reemplaza con tu DB y colecci√
 
 def WriteAppointment(appointment_dict: dict):
     try:
-        # Validar el recurso usando el modelo FHIR
-        app = Appointment.model_validate(appointment_dict)
+        # Validar que cumple el formato FHIR
+        appointment = Appointment.model_validate(appointment_dict)
     except Exception as e:
+        print("Error validando appointment:", e)
         return f"errorValidating: {str(e)}", None
 
-    validated_appointment_json = app.model_dump()
+    # Convertir a diccionario limpio y guardar en MongoDB
+    validated_appointment_json = appointment.model_dump()
+    result = collection.insert_one(validated_appointment_json)
 
-    try:
-        result = collection.insert_one(validated_appointment_json)
-        if result:
-            inserted_id = str(result.inserted_id)
-            return "success"
+    if result:
+        inserted_id = str(result.inserted_id)
+        return "success", inserted_id
+    else:
+        return "errorInserting", None
 
