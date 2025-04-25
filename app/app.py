@@ -68,6 +68,8 @@ async def add_encounter(request: Request):
         raise HTTPException(status_code=500, detail=f"Validating error: {status}")
 
 from fastapi import HTTPException, Request 
+app = FastAPI()
+
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
