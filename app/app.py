@@ -57,22 +57,17 @@ from fastapi import FastAPI, Request, HTTPException
 
 app = FastAPI()
 
-@app.post("/encounter", response_model=EncounterResponse)
+@app.post("/encounter", response_model=dict)
 async def add_encounter(request: Request):
     try:
-        new_encounter_dict = dict(await request.json())  # Obtener los datos del encounter
+        new_encounter_dict = dict(await request.json())
         status, encounter_id = WriteEncounter(new_encounter_dict)
-
         if status == 'success':
-            return {"_id": encounter_id}  # Retornar ID del encuentro
+            return {"_id": encounter_id}  # Retorna el ID del encuentro
         else:
-            # Si hubo un problema con la validación, retornamos un error 400
-            raise HTTPException(status_code=400, detail=f"Validating error: {status}")
-    
+            raise HTTPException(status_code=500, detail=f"Error de validación: {status}")
     except Exception as e:
-        # Manejar cualquier otro error inesperado
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
-
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
