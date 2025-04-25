@@ -1,17 +1,23 @@
 from fastapi import FastAPI, HTTPException, Request
 import uvicorn
-from app.controlador.PatientCrud import GetPatientById,WritePatient,GetPatientByIdentifier
-from app.controlador.AppointmentCrud import WriteAppointment 
+from app.controlador.PatientCrud import GetPatientById, WritePatient, GetPatientByIdentifier
+from app.controlador.AppointmentCrud import WriteAppointment
 from app.controlador.EncounterCrud import WriteEncounter
 from fastapi.middleware.cors import CORSMiddleware
 
+# Crea la aplicación FastAPI
 app = FastAPI()
 
+# Agregar middleware CORS para permitir solicitudes desde los dominios específicos
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://hl7-patient-write-juanita-066.onrender.com","https://appointment-write-juanita.onrender.com","https://encounter-write.onrender.com"],  # Permitir solo este dominio
+    allow_origins=[
+        "https://hl7-patient-write-juanita-066.onrender.com",
+        "https://appointment-write-juanita.onrender.com",
+        "https://encounter-write.onrender.com"
+    ],  # Permitir estos dominios
     allow_credentials=True,
-    allow_methods=["*"],  # Permitir todos los métodos (GET, POST, etc.)
+    allow_methods=["*"],  # Permitir todos los métodos HTTP (GET, POST, etc.)
     allow_headers=["*"],  # Permitir todos los encabezados
 )
 @app.get("/patient", response_model=dict)
