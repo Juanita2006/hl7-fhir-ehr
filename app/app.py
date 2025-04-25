@@ -2,13 +2,14 @@ from fastapi import FastAPI, HTTPException, Request
 import uvicorn
 from app.controlador.PatientCrud import GetPatientById,WritePatient,GetPatientByIdentifier
 from app.controlador.AppointmentCrud import WriteAppointment 
+from app.controlador.EncounterCrud import WriteEncounter
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://hl7-patient-write-juanita-066.onrender.com","https://appointment-write-juanita.onrender.com"],  # Permitir solo este dominio
+    allow_origins=["https://hl7-patient-write-juanita-066.onrender.com","https://appointment-write-juanita.onrender.com","https://encounter-write.onrender.com"],  # Permitir solo este dominio
     allow_credentials=True,
     allow_methods=["*"],  # Permitir todos los métodos (GET, POST, etc.)
     allow_headers=["*"],  # Permitir todos los encabezados
@@ -51,6 +52,21 @@ async def add_appointment(request: Request):
         return {"_id": appointment_id}  # Retornar ID de la cita
     else:
         raise HTTPException(status_code=500, detail=f"Validating error: {status}")
+
+from fastapi import FastAPI, Request, HTTPException
+
+app = FastAPI()
+
+@app.post("/encounter", response_model=dict)
+async def add_encounter(request: Request):
+    new_encounter_dict = dict(await request.json())
+    status, encounter_id = WriteEncounter(new_encounter_dict)
+
+    if status == 'success':
+        return {"_id": encounter_id}  # Retornar ID del encuentro
+    else:
+        raise HTTPException(status_code=500, detail=f"Validating error: {status}")
+
 from fastapi import HTTPException, Request 
 if __name__ == '__main__':
     import uvicorn
