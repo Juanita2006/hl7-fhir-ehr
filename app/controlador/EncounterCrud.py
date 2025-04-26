@@ -3,7 +3,7 @@ from bson import ObjectId
 from fhir.resources.encounter import Encounter
 
 # Conexión a la colección de encounters
-collection = connect_to_mongodb("Encounter", "Consulta")
+collection = connect_to_mongodb("JYI", "encounters")
 
 def WriteEncounter(encounter_dict: dict):
     try:
