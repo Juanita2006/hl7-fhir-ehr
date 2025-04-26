@@ -62,8 +62,6 @@ async def add_appointment(request: Request):
 
 from fastapi import FastAPI, Request, HTTPException
 
-app = FastAPI()
-
 @app.post("/encounter", response_model=dict)
 async def add_encounter(request: Request):
     try:
