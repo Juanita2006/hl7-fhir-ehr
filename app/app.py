@@ -14,7 +14,8 @@ app.add_middleware(
     allow_origins=[
         "https://hl7-patient-write-juanita-066.onrender.com",
         "https://appointment-write-juanita.onrender.com",
-        "https://encounter-write.onrender.com"
+        "https://encounter-write.onrender.com",
+        "https://hl7-fhir-ehr-juanita-123.onrender.com"
     ],  # Permitir estos dominios
     allow_credentials=True,
     allow_methods=["*"],  # Permitir todos los métodos HTTP (GET, POST, etc.)
