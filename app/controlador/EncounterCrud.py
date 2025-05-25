@@ -4,107 +4,108 @@ from fhir.resources.encounter import Encounter
 from fhir.resources.condition import Condition
 from fhir.resources.servicerequest import ServiceRequest
 from fhir.resources.medicationrequest import MedicationRequest
+from pymongo import MongoClient
 
-# Conexión a las colecciones de MongoDB
-db = connect_to_mongodb("JYI")
-encounter_collection = db["encounters"]
-condition_collection = db["conditions"]
-servicerequest_collection = db["servicerequests"]
-medicationrequest_collection = db["medicationrequests"]
+def get_collections():
+    """Obtiene las colecciones de MongoDB con manejo de errores"""
+    try:
+        client = MongoClient("mongodb://localhost:27017/")
+        db = client["JYI"]
+        return {
+            "encounters": db["encounters"],
+            "conditions": db["conditions"],
+            "servicerequests": db["servicerequests"],
+            "medicationrequests": db["medicationrequests"]
+        }
+    except Exception as e:
+        print(f"Error conectando a MongoDB: {str(e)}")
+        raise
+
+collections = get_collections()
 
 def WriteEncounter(encounter_dict: dict):
-    """Guarda un recurso Encounter en MongoDB con validación FHIR"""
+    """Guarda un recurso Encounter validado"""
     try:
         encounter = Encounter.model_validate(encounter_dict)
-        validated_encounter = encounter.model_dump()
-        result = encounter_collection.insert_one(validated_encounter)
+        result = collections["encounters"].insert_one(encounter.model_dump())
         return "success", str(result.inserted_id)
     except Exception as e:
-        print(f"Error validando/insertando Encounter: {str(e)}")
-        return f"errorValidating: {str(e)}", None
+        print(f"Error en WriteEncounter: {str(e)}")
+        return f"error: {str(e)}", None
 
 def WriteCondition(condition_dict: dict):
-    """Guarda un recurso Condition en MongoDB con validación FHIR"""
+    """Guarda un recurso Condition validado"""
     try:
         condition = Condition.model_validate(condition_dict)
-        validated_condition = condition.model_dump()
-        result = condition_collection.insert_one(validated_condition)
+        result = collections["conditions"].insert_one(condition.model_dump())
         return "success", str(result.inserted_id)
     except Exception as e:
-        print(f"Error validando/insertando Condition: {str(e)}")
-        return "errorValidating", None
+        print(f"Error en WriteCondition: {str(e)}")
+        return f"error: {str(e)}", None
 
 def WriteServiceRequest(service_request_dict: dict):
-    """Guarda un recurso ServiceRequest en MongoDB con validación FHIR"""
+    """Guarda un recurso ServiceRequest validado"""
     try:
         service_request = ServiceRequest.model_validate(service_request_dict)
-        validated_service_request = service_request.model_dump()
-        result = servicerequest_collection.insert_one(validated_service_request)
+        result = collections["servicerequests"].insert_one(service_request.model_dump())
         return "success", str(result.inserted_id)
     except Exception as e:
-        print(f"Error validando/insertando ServiceRequest: {str(e)}")
-        return "errorValidating", None
+        print(f"Error en WriteServiceRequest: {str(e)}")
+        return f"error: {str(e)}", None
 
 def WriteMedicationRequest(medication_request_dict: dict):
-    """Guarda un recurso MedicationRequest en MongoDB con validación FHIR"""
+    """Guarda un recurso MedicationRequest validado"""
     try:
         medication_request = MedicationRequest.model_validate(medication_request_dict)
-        validated_medication_request = medication_request.model_dump()
-        result = medicationrequest_collection.insert_one(validated_medication_request)
+        result = collections["medicationrequests"].insert_one(medication_request.model_dump())
         return "success", str(result.inserted_id)
     except Exception as e:
-        print(f"Error validando/insertando MedicationRequest: {str(e)}")
-        return "errorValidating", None
+        print(f"Error en WriteMedicationRequest: {str(e)}")
+        return f"error: {str(e)}", None
 
 def WriteEncounterWithResources(encounter_data: dict):
     """
-    Guarda un Encounter junto con sus recursos asociados en una sola transacción.
-    
+    Guarda un Encounter con sus recursos asociados de forma atómica
     Args:
         encounter_data: {
-            "encounter": dict,  # Datos del Encounter
-            "condition": dict,  # Datos del Condition (opcional)
-            "service_request": dict,  # Datos del ServiceRequest (opcional)
-            "medication_request": dict  # Datos del MedicationRequest (opcional)
+            "encounter": dict,
+            "condition": dict (opcional),
+            "service_request": dict (opcional),
+            "medication_request": dict (opcional)
         }
-    
     Returns:
         tuple: (status, encounter_id)
     """
     try:
-        # 1. Insertar el Encounter primero para obtener su ID
+        # Validación inicial
+        if not encounter_data.get("encounter"):
+            return "error: Missing encounter data", None
+
+        # Insertar Encounter primero
         encounter_status, encounter_id = WriteEncounter(encounter_data["encounter"])
         if encounter_status != "success":
-            return "errorEncounter", None
-        
-        # 2. Insertar recursos asociados si existen
-        results = []
-        
-        if "condition" in encounter_data:
-            condition_data = encounter_data["condition"]
-            condition_data["encounter"] = {"reference": f"Encounter/{encounter_id}"}
-            condition_status, condition_id = WriteCondition(condition_data)
-            results.append(condition_status)
-        
-        if "service_request" in encounter_data:
-            service_request_data = encounter_data["service_request"]
-            service_request_data["encounter"] = {"reference": f"Encounter/{encounter_id}"}
-            service_request_status, service_request_id = WriteServiceRequest(service_request_data)
-            results.append(service_request_status)
-        
-        if "medication_request" in encounter_data:
-            medication_request_data = encounter_data["medication_request"]
-            medication_request_data["encounter"] = {"reference": f"Encounter/{encounter_id}"}
-            medication_request_status, medication_request_id = WriteMedicationRequest(medication_request_data)
-            results.append(medication_request_status)
-        
-        # Verificar que todos los inserts fueron exitosos
-        if all(status == "success" for status in results):
-            return "success", encounter_id
-        else:
-            # TODO: Implementar rollback si es necesario
-            return "errorPartialInsert", encounter_id
-            
+            return encounter_status, None
+
+        # Procesar recursos asociados
+        resources = [
+            ("condition", WriteCondition),
+            ("service_request", WriteServiceRequest),
+            ("medication_request", WriteMedicationRequest)
+        ]
+
+        errors = []
+        for resource_name, writer in resources:
+            if resource_name in encounter_data:
+                data = encounter_data[resource_name]
+                data["encounter"] = {"reference": f"Encounter/{encounter_id}"}
+                status, _ = writer(data)
+                if status != "success":
+                    errors.append(resource_name)
+
+        if errors:
+            return f"partial_success: Failed to save {', '.join(errors)}", encounter_id
+        return "success", encounter_id
+
     except Exception as e:
         print(f"Error en WriteEncounterWithResources: {str(e)}")
-        return "errorSystem", None
+        return f"error: {str(e)}", None
