@@ -3,7 +3,7 @@ import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from app.controlador.PatientCrud import GetPatientById, WritePatient, GetPatientByIdentifier
 from app.controlador.AppointmentCrud import WriteAppointment
-from app.controlador.EncounterCrud import WriteEncounter, WriteEncounterWithResources
+from app.controlador.EncounterCrud import WriteEncounter, WriteEncounterWithResources, WriteCondition, WriteServiceRequest, WriteMedicationRequest
 
 # Crea la aplicación FastAPI
 app = FastAPI()
@@ -23,18 +23,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Endpoints existentes para Patient (se mantienen igual)
+# Endpoints para Patient
 @app.get("/patient", response_model=dict)
 async def get_patient_by_identifier(system: str, value: str):
-    print("solicitud datos:", system, value)
+    print("Solicitud datos:", system, value)
     status, patient = GetPatientByIdentifier(system, value)
     if status == 'success':
         return patient 
     elif status == 'notFound':
         raise HTTPException(status_code=204, detail="Patient not found")
     else:
-        raise HTTPException(status_code=500, detail=f"Internal error, {status}")
-
+        raise HTTPException(status_code=500, detail=f"Internal error: {status}")
+        
 @app.get("/patient/{patient_id}", response_model=dict)
 async def get_patient_by_id(patient_id: str):
     status, patient = GetPatientById(patient_id)
@@ -43,8 +43,8 @@ async def get_patient_by_id(patient_id: str):
     elif status == 'notFound':
         raise HTTPException(status_code=404, detail="Patient not found")
     else:
-        raise HTTPException(status_code=500, detail=f"Internal error. {status}")
-
+        raise HTTPException(status_code=500, detail=f"Internal error: {status}")
+        
 @app.post("/patient", response_model=dict)
 async def add_patient(request: Request):
     new_patient_dict = dict(await request.json())
@@ -52,9 +52,9 @@ async def add_patient(request: Request):
     if status == 'success':
         return {"_id": patient_id}
     else:
-        raise HTTPException(status_code=500, detail=f"Validating error: {status}")
+        raise HTTPException(status_code=500, detail=f"Validation error: {status}")
 
-# Endpoint existente para Appointment (se mantiene igual)
+# Endpoint para Appointment
 @app.post("/appointment", response_model=dict)
 async def add_appointment(request: Request):
     new_appointment_dict = dict(await request.json())
@@ -63,36 +63,33 @@ async def add_appointment(request: Request):
     if status == 'success':
         return {"_id": appointment_id}
     else:
-        raise HTTPException(status_code=500, detail=f"Validating error: {status}")
+        raise HTTPException(status_code=500, detail=f"Validation error: {status}")
 
-# Nuevo endpoint para Encounter con recursos asociados
+# Endpoints para Encounter y recursos asociados
 @app.post("/encounter", response_model=dict)
 async def add_encounter(request: Request):
     try:
         data = dict(await request.json())
         
-        # Validar estructura básica
         if "encounter" not in data:
-            raise HTTPException(status_code=400, detail="Datos de encounter son requeridos")
+            raise HTTPException(status_code=400, detail="Encounter data is required")
         
-        # Procesar el encounter con recursos asociados
         status, encounter_id = WriteEncounterWithResources(data)
         
         if status == 'success':
             return {
                 "_id": encounter_id,
-                "message": "Encounter y recursos asociados creados exitosamente"
+                "message": "Encounter and related resources created successfully"
             }
         elif status == 'errorPartialInsert':
-            # Aunque algunos recursos fallaron, el encounter se creó
             return {
                 "_id": encounter_id,
-                "warning": "Encounter creado pero algunos recursos asociados fallaron"
+                "warning": "Encounter created but some related resources failed"
             }
         else:
             raise HTTPException(
                 status_code=500,
-                detail=f"Error al crear encounter: {status}"
+                detail=f"Error creating encounter: {status}"
             )
             
     except HTTPException:
@@ -100,10 +97,9 @@ async def add_encounter(request: Request):
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error interno del servidor: {str(e)}"
+            detail=f"Internal server error: {str(e)}"
         )
 
-# Nuevos endpoints para recursos individuales
 @app.post("/condition", response_model=dict)
 async def add_condition(request: Request):
     try:
@@ -115,12 +111,12 @@ async def add_condition(request: Request):
         else:
             raise HTTPException(
                 status_code=500,
-                detail=f"Error al crear condition: {status}"
+                detail=f"Error creating condition: {status}"
             )
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error interno del servidor: {str(e)}"
+            detail=f"Internal server error: {str(e)}"
         )
 
 @app.post("/servicerequest", response_model=dict)
@@ -134,12 +130,12 @@ async def add_service_request(request: Request):
         else:
             raise HTTPException(
                 status_code=500,
-                detail=f"Error al crear service request: {status}"
+                detail=f"Error creating service request: {status}"
             )
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error interno del servidor: {str(e)}"
+            detail=f"Internal server error: {str(e)}"
         )
 
 @app.post("/medicationrequest", response_model=dict)
@@ -153,14 +149,13 @@ async def add_medication_request(request: Request):
         else:
             raise HTTPException(
                 status_code=500,
-                detail=f"Error al crear medication request: {status}"
+                detail=f"Error creating medication request: {status}"
             )
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error interno del servidor: {str(e)}"
+            detail=f"Internal server error: {str(e)}"
         )
 
 if __name__ == '__main__':
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
