@@ -4,24 +4,17 @@ from fhir.resources.encounter import Encounter
 from fhir.resources.condition import Condition
 from fhir.resources.servicerequest import ServiceRequest
 from fhir.resources.medicationrequest import MedicationRequest
-from pymongo import MongoClient
 
-def connect_to_mongodb():
-    """Obtiene las colecciones de MongoDB con manejo de errores"""
-    try:
-        client = MongoClient("mongodb://localhost:27017/")
-        db = client["JYI"]
-        return {
-            "encounters": db["encounters"],
-            "conditions": db["conditions"],
-            "servicerequests": db["servicerequests"],
-            "medicationrequests": db["medicationrequests"]
-        }
-    except Exception as e:
-        print(f"Error conectando a MongoDB: {str(e)}")
-        raise
+# Obtener el objeto db desde la conexión
+db = connect_to_mongodb()
 
-collections = get_collections()
+# Definir las colecciones
+collections = {
+    "encounters": db["encounters"],
+    "conditions": db["conditions"],
+    "servicerequests": db["servicerequests"],
+    "medicationrequests": db["medicationrequests"]
+}
 
 def WriteEncounter(encounter_dict: dict):
     """Guarda un recurso Encounter validado"""
