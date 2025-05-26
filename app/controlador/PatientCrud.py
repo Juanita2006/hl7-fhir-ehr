@@ -1,65 +1,40 @@
 from connection import connect_to_mongodb
 from bson import ObjectId
 from fhir.resources.patient import Patient
-from fhir.resources import FHIRValidationError
+import json
 
 collection = connect_to_mongodb("SamplePatientService", "patients")
 
 def GetPatientById(patient_id: str):
     try:
-        if not ObjectId.is_valid(patient_id):
-            return "invalidId", None
-            
         patient = collection.find_one({"_id": ObjectId(patient_id)})
-        if not patient:
-            return "notFound", None
-            
-        patient["_id"] = str(patient["_id"])
-        return "success", patient
-        
+        if patient:
+            patient["_id"] = str(patient["_id"])
+            return "success", patient
+        return "notFound", None
     except Exception as e:
-        return "serverError", None
+        return f"notFound", None
 
 def WritePatient(patient_dict: dict):
     try:
-        # Validación FHIR
-        try:
-            pat = Patient.model_validate(patient_dict)
-            validated_patient = pat.model_dump()
-        except FHIRValidationError as e:
-            return "validationError", str(e)
-        except Exception as e:
-            return "validationError", str(e)
-        
-        # Inserción en MongoDB
-        result = collection.insert_one(validated_patient)
-        if not result.inserted_id:
-            return "insertError", None
-            
-        return "success", str(result.inserted_id)
-        
+        pat = Patient.model_validate(patient_dict)
     except Exception as e:
-        return "serverError", str(e)
+        return f"errorValidating: {str(e)}",None
+    validated_patient_json = pat.model_dump()
+    result = collection.insert_one(patient_dict)
+    if result:
+        inserted_id = str(result.inserted_id)
+        return "success",inserted_id
+    else:
+        return "errorInserting", None
 
-def GetPatientByIdentifier(patientSystem: str, patientValue: str):
+def GetPatientByIdentifier(patientSystem,patientValue):
     try:
-        if not patientSystem or not patientValue:
-            return "invalidInput", None
-            
-        patient = collection.find_one({
-            "identifier": {
-                "$elemMatch": {
-                    "system": patientSystem,
-                    "value": patientValue
-                }
-            }
-        })
-        
-        if not patient:
-            return "notFound", None
-            
-        patient["_id"] = str(patient["_id"])
-        return "success", patient
-        
+        patient = collection.find_one({"identifier.system":patientSystem,"identifier.value":patientValue})
+        print("Patient Retornado:",patient)
+        if patient:
+            patient["_id"] = str(patient["_id"])
+            return "success", patient
+        return "notFound", None
     except Exception as e:
-        return "serverError", str(e)
+        return f"error encontrado: {str(e)}", None
