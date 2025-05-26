@@ -43,6 +43,10 @@ async def handle_resource(request: Request, writer_function, resource_name: str)
 
 
 # Endpoints individuales
+@app.post("/patient")  # ¡Este endpoint debe existir!
+async def create_patient():
+    return {"message": "Paciente creado"}
+    
 @app.post("/encounters")
 async def post_encounter(request: Request):
     return await handle_resource(request, WriteEncounter, "encounter")
