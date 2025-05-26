@@ -73,6 +73,7 @@ async def add_appointment(request: Request):
 async def add_encounter(request: Request):
     try:
         data = dict(await request.json())
+        print(">>> ENCOUNTER DATA:", data)
         if "encounter" not in data:
             raise HTTPException(status_code=400, detail="Encounter data is required")
         status, encounter_id = WriteEncounterWithResources(data)
@@ -103,6 +104,7 @@ async def add_condition(request: Request):
 async def add_service_request(request: Request):
     try:
         service_request_data = dict(await request.json())
+        print(">>> SERVICE REQUEST DATA:", service_request_data)
         status, service_request_id = WriteServiceRequest(service_request_data)
         if status == 'success':
             return {"_id": service_request_id}
@@ -116,6 +118,7 @@ async def add_service_request(request: Request):
 async def add_medication_request(request: Request):
     try:
         medication_request_data = dict(await request.json())
+        print(">>> MEDICATION REQUEST DATA:", medication_request_data)
         status, medication_request_id = WriteMedicationRequest(medication_request_data)
         if status == 'success':
             return {"_id": medication_request_id}
