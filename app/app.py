@@ -7,6 +7,9 @@ from fhir.resources.servicerequest import ServiceRequest
 from fhir.resources.medicationrequest import MedicationRequest
 import os
 
+# Importar la función que maneja escritura conjunta
+from EncounterCrud import WriteEncounterWithResources
+
 app = FastAPI()
 
 # Habilitar CORS
@@ -84,4 +87,22 @@ async def write_medication_request(request: Request):
         return {"id": str(result.inserted_id)}
     except Exception as e:
         print("Error en WriteMedicationRequest:", e)
+        return {"error": str(e)}
+
+# Nuevo endpoint para escribir Encounter con recursos asociados
+@app.post("/encounter_with_resources")
+async def encounter_with_resources(request: Request):
+    try:
+        data = await request.json()
+        status, encounter_id = WriteEncounterWithResources(data)
+
+        if status == "success":
+            return {"status": "success", "encounter_id": encounter_id}
+        elif status.startswith("partial_success"):
+            return {"status": status, "encounter_id": encounter_id}
+        else:
+            return {"status": status}
+
+    except Exception as e:
+        print("Error en /encounter_with_resources:", e)
         return {"error": str(e)}
