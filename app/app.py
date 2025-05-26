@@ -44,26 +44,20 @@ async def handle_resource(request: Request, writer_function, resource_name: str)
 
 
 # Endpoints individuales
-# Agrega esto junto con tus otros endpoints en app.py
 @app.post("/patient")
-async def post_patient(request: Request):
+async def create_patient(request: Request):
     try:
         data = await request.json()
-        print(">>> PATIENT DATA:", data)
+        print("Datos recibidos:", data)  # Ver en logs
         
-        # Importa tu función WritePatient
-        from app.controlador.patientcrud import WritePatient
-        
-        status, result = WritePatient(data)
-        
-        if status == "success":
-            return {"status": "success", "patient_id": result}
-        else:
-            return {"status": "error", "message": result}, 400
+        # Simulación temporal - reemplaza con tu WritePatient real
+        return JSONResponse(
+            content={"status": "success", "patient_id": "test123"},
+            status_code=201
+        )
             
     except Exception as e:
-        print("Error en /patient:", e)
-        return {"status": "error", "message": str(e)}, 500
+        raise HTTPException(status_code=500, detail=str(e))
 @app.post("/encounters")
 async def post_encounter(request: Request):
     return await handle_resource(request, WriteEncounter, "encounter")
