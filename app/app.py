@@ -43,9 +43,36 @@ async def handle_resource(request: Request, writer_function, resource_name: str)
 
 
 # Endpoints individuales
-@app.post("/patient")  # ¡Este endpoint debe existir!
-async def create_patient():
-    return {"message": "Paciente creado"}
+@app.post("/patient")
+async def create_patient(request: Request):
+    try:
+        data = await request.json()
+        print(">>> PACIENTE RECIBIDO:", data)
+        
+        status, patient_id = WritePatient(data)
+        
+        if status == "success":
+            return JSONResponse(
+                content={
+                    "status": "success",
+                    "patient_id": patient_id,
+                    "message": "Paciente creado exitosamente"
+                },
+                status_code=201
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=patient_id if patient_id else "Error al crear paciente"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error interno del servidor: {str(e)}"
+        )
     
 @app.post("/encounters")
 async def post_encounter(request: Request):
