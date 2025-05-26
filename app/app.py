@@ -1,14 +1,16 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
-from fhir.resources.encounter import Encounter
-from fhir.resources.condition import Condition
-from fhir.resources.servicerequest import ServiceRequest
-from fhir.resources.medicationrequest import MedicationRequest
 import os
 
-# Importar la función que maneja escritura conjunta
-from crud.EncounterCrud import WriteEncounterWithResources
+# Importar funciones CRUD
+from crud.EncounterCrud import (
+    WriteEncounter,
+    WriteCondition,
+    WriteServiceRequest,
+    WriteMedicationRequest,
+    WriteEncounterWithResources
+)
 
 app = FastAPI()
 
@@ -21,79 +23,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Conexión a MongoDB
+# Conexión a MongoDB (única base de datos: JYI)
 client = MongoClient(os.getenv("MONGO_URI", "mongodb://localhost:27017"))
-db = client["fhir"]
+db = client["JYI"]
 
-# Colecciones por tipo de recurso
-collections = {
-    "Encounter": db["encounters"],
-    "Condition": db["conditions"],
-    "ServiceRequest": db["servicerequests"],
-    "MedicationRequest": db["medicationrequests"]
-}
 
-# Endpoint para Encounter
-@app.post("/encounters")
-async def write_encounter(request: Request):
-    try:
-        body = await request.json()
-        print(">>> ENCOUNTER DATA:", body)
-        body["resourceType"] = "Encounter"  # Normalizar
-        encounter = Encounter(**body)
-        result = collections["Encounter"].insert_one(encounter.dict())
-        return {"id": str(result.inserted_id)}
-    except Exception as e:
-        print("Error en WriteEncounter:", e)
-        return {"error": str(e)}
-
-# Endpoint para Condition
-@app.post("/conditions")
-async def write_condition(request: Request):
-    try:
-        body = await request.json()
-        print(">>> CONDITION DATA:", body)
-        body["resourceType"] = "Condition"
-        condition = Condition(**body)
-        result = collections["Condition"].insert_one(condition.dict())
-        return {"id": str(result.inserted_id)}
-    except Exception as e:
-        print("Error en WriteCondition:", e)
-        return {"error": str(e)}
-
-# Endpoint para ServiceRequest
-@app.post("/servicerequests")
-async def write_service_request(request: Request):
-    try:
-        body = await request.json()
-        print(">>> SERVICE REQUEST DATA:", body)
-        body["resourceType"] = "ServiceRequest"
-        service_request = ServiceRequest(**body)
-        result = collections["ServiceRequest"].insert_one(service_request.dict())
-        return {"id": str(result.inserted_id)}
-    except Exception as e:
-        print("Error en WriteServiceRequest:", e)
-        return {"error": str(e)}
-
-# Endpoint para MedicationRequest
-@app.post("/medicationrequests")
-async def write_medication_request(request: Request):
-    try:
-        body = await request.json()
-        print(">>> MEDICATION REQUEST DATA:", body)
-        body["resourceType"] = "MedicationRequest"
-        medication_request = MedicationRequest(**body)
-        result = collections["MedicationRequest"].insert_one(medication_request.dict())
-        return {"id": str(result.inserted_id)}
-    except Exception as e:
-        print("Error en WriteMedicationRequest:", e)
-        return {"error": str(e)}
-
-# Nuevo endpoint para escribir Encounter con recursos asociados
-@app.post("/encounter_with_resources")
-async def encounter_with_resources(request: Request):
+# Utilidad común para manejar endpoints simples
+async def handle_resource(request: Request, writer_function, resource_name: str):
     try:
         data = await request.json()
+        print(f">>> {resource_name.upper()} DATA:", data)
+        status, inserted_id = writer_function(data)
+        if status.startswith("success"):
+            return {"id": inserted_id}
+        return {"error": status}
+    except Exception as e:
+        print(f"Error en Write{resource_name.capitalize()}: {e}")
+        return {"error": str(e)}
+
+
+# Endpoints individuales
+@app.post("/encounters")
+async def post_encounter(request: Request):
+    return await handle_resource(request, WriteEncounter, "encounter")
+
+
+@app.post("/conditions")
+async def post_condition(request: Request):
+    return await handle_resource(request, WriteCondition, "condition")
+
+
+@app.post("/servicerequests")
+async def post_service_request(request: Request):
+    return await handle_resource(request, WriteServiceRequest, "service_request")
+
+
+@app.post("/medicationrequests")
+async def post_medication_request(request: Request):
+    return await handle_resource(request, WriteMedicationRequest, "medication_request")
+
+
+# Endpoint compuesto: Encounter con recursos relacionados
+@app.post("/encounter_with_resources")
+async def post_encounter_with_resources(request: Request):
+    try:
+        data = await request.json()
+        print(">>> ENCOUNTER WITH RESOURCES:", data)
+
         status, encounter_id = WriteEncounterWithResources(data)
 
         if status == "success":
@@ -101,8 +77,7 @@ async def encounter_with_resources(request: Request):
         elif status.startswith("partial_success"):
             return {"status": status, "encounter_id": encounter_id}
         else:
-            return {"status": status}
-
+            return {"status": status, "encounter_id": encounter_id or None}
     except Exception as e:
         print("Error en /encounter_with_resources:", e)
         return {"error": str(e)}
