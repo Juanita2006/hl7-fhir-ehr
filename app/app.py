@@ -36,7 +36,7 @@ app.add_middleware(
 # Conexión a MongoDB
 client = MongoClient(os.getenv("MONGO_URI", "mongodb://localhost:27017"))
 patients_db = client["Cluster26"]
-patients_collection = patients_db("Patients"]
+patients_collection = patients_db["Patients"]
 main_db = client["JYI"]
 
 
