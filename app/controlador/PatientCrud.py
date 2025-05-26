@@ -1,8 +1,9 @@
 from connection import connect_to_mongodb
 from bson import ObjectId
 from fhir.resources.patient import Patient
+import json
 
-# Asegúrate de que esta colección es la correcta
+# Conexión a la base de datos y colección "patients"
 collection = connect_to_mongodb("SamplePatientService", "patients")
 
 def GetPatientById(patient_id: str):
@@ -13,21 +14,28 @@ def GetPatientById(patient_id: str):
             return "success", patient
         return "notFound", None
     except Exception as e:
-        print(f"Error en GetPatientById: {e}")
-        return "error", None
+        return "notFound", None
 
 def WritePatient(patient_dict: dict):
     try:
+        # Validar con modelo HL7 FHIR
         pat = Patient.model_validate(patient_dict)
-        validated_patient_json = pat.model_dump()
+    except Exception as e:
+        return f"errorValidating: {str(e)}", None
+
+    try:
+        # Convertir a estructura JSON serializable
+        validated_patient_json = json.loads(pat.model_dump_json())
+
+        # Insertar en MongoDB
         result = collection.insert_one(validated_patient_json)
-        if result.inserted_id:
-            return "success", str(result.inserted_id)
+        if result:
+            inserted_id = str(result.inserted_id)
+            return "success", inserted_id
         else:
             return "errorInserting", None
     except Exception as e:
-        print(f"Error en WritePatient: {e}")
-        return f"errorValidating: {str(e)}", None
+        return f"errorInserting: {str(e)}", None
 
 def GetPatientByIdentifier(patientSystem, patientValue):
     try:
@@ -35,11 +43,9 @@ def GetPatientByIdentifier(patientSystem, patientValue):
             "identifier.system": patientSystem,
             "identifier.value": patientValue
         })
-        print("Patient Retornado:", patient)
         if patient:
             patient["_id"] = str(patient["_id"])
             return "success", patient
         return "notFound", None
     except Exception as e:
-        print(f"Error en GetPatientByIdentifier: {e}")
-        return f"error: {str(e)}", None
+        return f"error encontrado: {str(e)}", None
