@@ -4,7 +4,7 @@ from pymongo import MongoClient
 import os
 
 # Importar funciones CRUD
-from crud.EncounterCrud import (
+from app.controlador.EncounterCrud import (
     WriteEncounter,
     WriteCondition,
     WriteServiceRequest,
