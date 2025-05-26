@@ -6,7 +6,7 @@ from fhir.resources.servicerequest import ServiceRequest
 from fhir.resources.medicationrequest import MedicationRequest
 from pymongo import MongoClient
 
-def get_collections():
+def connect_to_mongodb():
     """Obtiene las colecciones de MongoDB con manejo de errores"""
     try:
         client = MongoClient("mongodb://localhost:27017/")
