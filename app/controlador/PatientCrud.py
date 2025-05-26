@@ -4,7 +4,7 @@ from fhir.resources.patient import Patient
 import json
 
 # Conexión a la base de datos y colección "patients"
-collection = connect_to_mongodb("SamplePatientService", "patients")
+collection = connect_to_mongodb("Cluster26", "Patients")
 
 def GetPatientById(patient_id: str):
     try:
