@@ -35,11 +35,11 @@ app.add_middleware(
 
 # Conexión a MongoDB
 client = MongoClient(os.getenv("MONGO_URI", "mongodb://localhost:27017"))
-patient_db = client["Cluster26"]
+db = client["Cluster26"]  # Base de datos Cluster26
+patient_collection = db["Patients"]  # Colección Patients (con mayúscula)
 
-# Usar la colección correcta: 'patients' (en minúscula y plural)
-patient_collection = patient_db["patients"]
-main_db = client["JYI"]
+# Si necesitas otra base de datos para otros datos (opcional)
+main_db = client["JYI"] 
 
 # --------------------------
 # ENDPOINTS PARA PACIENTES
