@@ -9,7 +9,8 @@ from app.controlador.EncounterCrud import (
     WriteCondition,
     WriteServiceRequest,
     WriteMedicationRequest,
-    WriteEncounterWithResources
+    WriteEncounterWithResources,
+    WritePatient
 )
 
 app = FastAPI()
