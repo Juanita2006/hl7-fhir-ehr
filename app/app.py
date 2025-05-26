@@ -8,7 +8,7 @@ from fhir.resources.medicationrequest import MedicationRequest
 import os
 
 # Importar la función que maneja escritura conjunta
-from EncounterCrud import WriteEncounterWithResources
+from crud.EncounterCrud import WriteEncounterWithResources
 
 app = FastAPI()
 
