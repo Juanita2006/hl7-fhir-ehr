@@ -9,8 +9,7 @@ from app.controlador.EncounterCrud import (
     WriteCondition,
     WriteServiceRequest,
     WriteMedicationRequest,
-    WriteEncounterWithResources,
-    WritePatient
+    WriteEncounterWithResources
 )
 
 app = FastAPI()
@@ -44,20 +43,6 @@ async def handle_resource(request: Request, writer_function, resource_name: str)
 
 
 # Endpoints individuales
-@app.post("/patient")
-async def create_patient(request: Request):
-    try:
-        data = await request.json()
-        print("Datos recibidos:", data)  # Ver en logs
-        
-        # Simulación temporal - reemplaza con tu WritePatient real
-        return JSONResponse(
-            content={"status": "success", "patient_id": "test123"},
-            status_code=201
-        )
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 @app.post("/encounters")
 async def post_encounter(request: Request):
     return await handle_resource(request, WriteEncounter, "encounter")
