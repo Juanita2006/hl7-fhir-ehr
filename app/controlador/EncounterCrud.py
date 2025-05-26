@@ -67,41 +67,58 @@ def WriteMedicationRequest(medication_request_dict: dict):
 
 def WriteEncounterWithResources(encounter_data: dict):
     try:
-        if not encounter_data.get("encounter"):
+        # 1. Extraer y validar partes
+        encounter = encounter_data.get("encounter")
+        condition_data = encounter_data.get("condition")
+        service_request_data = encounter_data.get("service_request")
+        medication_request_data = encounter_data.get("medication_request")
+
+        if not encounter:
             return "error: Missing encounter data", None
 
-        # 1. Insertar el Encounter principal
-        encounter_status, encounter_id = WriteEncounter(encounter_data["encounter"])
-        if encounter_status != "success":
-            return encounter_status, None
+        # 2. Insertar el Encounter principal
+        status_e, encounter_id = WriteEncounter(encounter)
+        if status_e != "success":
+            return status_e, None
 
-        # 2. Insertar recursos relacionados
+        # 3. Preparar Encounter reference
+        encounter_ref = {"reference": f"Encounter/{encounter_id}"}
+
+        # 4. Insertar Condition(es)
         errors = []
-        related_resources = [
-            ("condition", WriteCondition),
-            ("service_request", WriteServiceRequest),
-            ("medication_request", WriteMedicationRequest)
-        ]
 
-        for key, writer in related_resources:
-            if key in encounter_data:
-                resource_block = encounter_data[key]
+        if condition_data:
+            condition_list = condition_data if isinstance(condition_data, list) else [condition_data]
+            for condition in condition_list:
+                condition["encounter"] = encounter_ref
+                status, _ = WriteCondition(condition)
+                if status != "success":
+                    errors.append("condition")
 
-                # Permitir lista o único objeto
-                resource_list = resource_block if isinstance(resource_block, list) else [resource_block]
+        # 5. Insertar ServiceRequest(s)
+        if service_request_data:
+            sr_list = service_request_data if isinstance(service_request_data, list) else [service_request_data]
+            for sr in sr_list:
+                sr["encounter"] = encounter_ref
+                status, _ = WriteServiceRequest(sr)
+                if status != "success":
+                    errors.append("service_request")
 
-                for item in resource_list:
-                    # Agregar referencia al encounter
-                    item["encounter"] = {"reference": f"Encounter/{encounter_id}"}
-                    status, _ = writer(item)
-                    if status != "success":
-                        errors.append(f"{key}")
+        # 6. Insertar MedicationRequest(s)
+        if medication_request_data:
+            mr_list = medication_request_data if isinstance(medication_request_data, list) else [medication_request_data]
+            for mr in mr_list:
+                mr["encounter"] = encounter_ref
+                status, _ = WriteMedicationRequest(mr)
+                if status != "success":
+                    errors.append("medication_request")
 
         if errors:
-            return f"partial_success: Failed to save {', '.join(errors)}", encounter_id
+            return f"partial_success: Failed to save {', '.join(set(errors))}", encounter_id
 
         return "success", encounter_id
 
     except Exception as e:
         print(f"Error en WriteEncounterWithResources: {str(e)}")
         return f"error: {str(e)}", None
+
