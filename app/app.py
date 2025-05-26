@@ -1,131 +1,87 @@
-from fastapi import FastAPI, HTTPException, Request
-import uvicorn
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.controlador.PatientCrud import GetPatientById, WritePatient, GetPatientByIdentifier
-from app.controlador.AppointmentCrud import WriteAppointment
-from app.controlador.EncounterCrud import (
-    WriteEncounterWithResources,
-    WriteCondition,
-    WriteServiceRequest,
-    WriteMedicationRequest
-)
+from pymongo import MongoClient
+from fhir.resources.encounter import Encounter
+from fhir.resources.condition import Condition
+from fhir.resources.servicerequest import ServiceRequest
+from fhir.resources.medicationrequest import MedicationRequest
+import os
 
 app = FastAPI()
 
-# Configuración CORS
+# Habilitar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://hl7-patient-write-juanita-066.onrender.com",
-        "https://appointment-write-juanita.onrender.com",
-        "https://encounter-write.onrender.com",
-        "https://hl7-fhir-ehr-juanita-123.onrender.com",
-        "http://localhost:3000"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Endpoints para patients
-@app.get("/patients", response_model=dict)
-async def get_patient_by_identifier(system: str, value: str):
-    print("Solicitud datos:", system, value)
-    status, patient = GetPatientByIdentifier(system, value)
-    if status == 'success':
-        return patient
-    elif status == 'notFound':
-        raise HTTPException(status_code=204, detail="Patient not found")
-    else:
-        raise HTTPException(status_code=500, detail=f"Internal error: {status}")
+# Conexión a MongoDB
+client = MongoClient(os.getenv("MONGO_URI", "mongodb://localhost:27017"))
+db = client["fhir"]
 
-@app.get("/patients/{patient_id}", response_model=dict)
-async def get_patient_by_id(patient_id: str):
-    status, patient = GetPatientById(patient_id)
-    if status == 'success':
-        return patient
-    elif status == 'notFound':
-        raise HTTPException(status_code=404, detail="Patient not found")
-    else:
-        raise HTTPException(status_code=500, detail=f"Internal error: {status}")
+# Colecciones por tipo de recurso
+collections = {
+    "Encounter": db["encounters"],
+    "Condition": db["conditions"],
+    "ServiceRequest": db["servicerequests"],
+    "MedicationRequest": db["medicationrequests"]
+}
 
-@app.post("/patients", response_model=dict)
-async def add_patient(request: Request):
-    new_patient_dict = dict(await request.json())
-    status, patient_id = WritePatient(new_patient_dict)
-    if status == 'success':
-        return {"_id": patient_id}
-    else:
-        raise HTTPException(status_code=500, detail=f"Validation error: {status}")
-
-# Endpoint para appointments
-@app.post("/appointments", response_model=dict)
-async def add_appointment(request: Request):
-    new_appointment_dict = dict(await request.json())
-    status, appointment_id = WriteAppointment(new_appointment_dict)
-    if status == 'success':
-        return {"_id": appointment_id}
-    else:
-        raise HTTPException(status_code=500, detail=f"Validation error: {status}")
-
-# Endpoint para encounters (y recursos relacionados)
-@app.post("/encounters", response_model=dict)
-async def add_encounter(request: Request):
+# Endpoint para Encounter
+@app.post("/encounters")
+async def write_encounter(request: Request):
     try:
-        data = dict(await request.json())
-        print(">>> ENCOUNTER DATA:", data)
-        if "encounter" not in data:
-            raise HTTPException(status_code=400, detail="Encounter data is required")
-        status, encounter_id = WriteEncounterWithResources(data)
-        if status == 'success':
-            return {"_id": encounter_id, "message": "Encounter and related resources created successfully"}
-        elif status == 'errorPartialInsert':
-            return {"_id": encounter_id, "warning": "Encounter created but some related resources failed"}
-        else:
-            raise HTTPException(status_code=500, detail=f"Error creating encounter: {status}")
+        body = await request.json()
+        print(">>> ENCOUNTER DATA:", body)
+        body["resourceType"] = "Encounter"  # Normalizar
+        encounter = Encounter(**body)
+        result = collections["Encounter"].insert_one(encounter.dict())
+        return {"id": str(result.inserted_id)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        print("Error en WriteEncounter:", e)
+        return {"error": str(e)}
 
-# Endpoint para conditions
-@app.post("/conditions", response_model=dict)
-async def add_condition(request: Request):
+# Endpoint para Condition
+@app.post("/conditions")
+async def write_condition(request: Request):
     try:
-        condition_data = dict(await request.json())
-        status, condition_id = WriteCondition(condition_data)
-        if status == 'success':
-            return {"_id": condition_id}
-        else:
-            raise HTTPException(status_code=500, detail=f"Error creating condition: {status}")
+        body = await request.json()
+        print(">>> CONDITION DATA:", body)
+        body["resourceType"] = "Condition"
+        condition = Condition(**body)
+        result = collections["Condition"].insert_one(condition.dict())
+        return {"id": str(result.inserted_id)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        print("Error en WriteCondition:", e)
+        return {"error": str(e)}
 
-# Endpoint para servicerequests
-@app.post("/servicerequests", response_model=dict)
-async def add_service_request(request: Request):
+# Endpoint para ServiceRequest
+@app.post("/servicerequests")
+async def write_service_request(request: Request):
     try:
-        service_request_data = dict(await request.json())
-        print(">>> SERVICE REQUEST DATA:", service_request_data)
-        status, service_request_id = WriteServiceRequest(service_request_data)
-        if status == 'success':
-            return {"_id": service_request_id}
-        else:
-            raise HTTPException(status_code=500, detail=f"Error creating service request: {status}")
+        body = await request.json()
+        print(">>> SERVICE REQUEST DATA:", body)
+        body["resourceType"] = "ServiceRequest"
+        service_request = ServiceRequest(**body)
+        result = collections["ServiceRequest"].insert_one(service_request.dict())
+        return {"id": str(result.inserted_id)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        print("Error en WriteServiceRequest:", e)
+        return {"error": str(e)}
 
-# Endpoint para medicationrequests
-@app.post("/medicationrequests", response_model=dict)
-async def add_medication_request(request: Request):
+# Endpoint para MedicationRequest
+@app.post("/medicationrequests")
+async def write_medication_request(request: Request):
     try:
-        medication_request_data = dict(await request.json())
-        print(">>> MEDICATION REQUEST DATA:", medication_request_data)
-        status, medication_request_id = WriteMedicationRequest(medication_request_data)
-        if status == 'success':
-            return {"_id": medication_request_id}
-        else:
-            raise HTTPException(status_code=500, detail=f"Error creating medication request: {status}")
+        body = await request.json()
+        print(">>> MEDICATION REQUEST DATA:", body)
+        body["resourceType"] = "MedicationRequest"
+        medication_request = MedicationRequest(**body)
+        result = collections["MedicationRequest"].insert_one(medication_request.dict())
+        return {"id": str(result.inserted_id)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-if __name__ == '__main__':
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+        print("Error en WriteMedicationRequest:", e)
+        return {"error": str(e)}
