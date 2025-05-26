@@ -5,14 +5,21 @@ from fhir.resources.condition import Condition
 from fhir.resources.servicerequest import ServiceRequest
 from fhir.resources.medicationrequest import MedicationRequest
 
-# Obtener las colecciones directamente
+# Conexión a MongoDB y colecciones
 encounters_col = connect_to_mongodb("JYI", "encounters")
 conditions_col = connect_to_mongodb("JYI", "conditions")
 servicerequests_col = connect_to_mongodb("JYI", "servicerequests")
 medicationrequests_col = connect_to_mongodb("JYI", "medicationrequests")
 
+def fix_resource_type(data: dict, correct_type: str):
+    """Corrige el valor de resourceType si está incorrecto."""
+    if "resourceType" in data and data["resourceType"].lower() != correct_type.lower():
+        data["resourceType"] = correct_type
+    return data
+
 def WriteEncounter(encounter_dict: dict):
     try:
+        fix_resource_type(encounter_dict, "Encounter")
         encounter = Encounter.model_validate(encounter_dict)
         result = encounters_col.insert_one(encounter.model_dump())
         return "success", str(result.inserted_id)
@@ -22,6 +29,7 @@ def WriteEncounter(encounter_dict: dict):
 
 def WriteCondition(condition_dict: dict):
     try:
+        fix_resource_type(condition_dict, "Condition")
         condition = Condition.model_validate(condition_dict)
         result = conditions_col.insert_one(condition.model_dump())
         return "success", str(result.inserted_id)
@@ -31,6 +39,7 @@ def WriteCondition(condition_dict: dict):
 
 def WriteServiceRequest(service_request_dict: dict):
     try:
+        fix_resource_type(service_request_dict, "ServiceRequest")
         service_request = ServiceRequest.model_validate(service_request_dict)
         result = servicerequests_col.insert_one(service_request.model_dump())
         return "success", str(result.inserted_id)
@@ -40,6 +49,7 @@ def WriteServiceRequest(service_request_dict: dict):
 
 def WriteMedicationRequest(medication_request_dict: dict):
     try:
+        fix_resource_type(medication_request_dict, "MedicationRequest")
         medication_request = MedicationRequest.model_validate(medication_request_dict)
         result = medicationrequests_col.insert_one(medication_request.model_dump())
         return "success", str(result.inserted_id)
@@ -56,6 +66,7 @@ def WriteEncounterWithResources(encounter_data: dict):
         if encounter_status != "success":
             return encounter_status, None
 
+        # Recursos opcionales relacionados
         resources = [
             ("condition", WriteCondition),
             ("service_request", WriteServiceRequest),
