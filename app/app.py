@@ -4,7 +4,7 @@ from pymongo import MongoClient
 import os
 import uvicorn
 
-# Importar todas las funciones CRUD
+# Importar funciones CRUD
 from app.controlador.PatientCrud import GetPatientById, WritePatient, GetPatientByIdentifier
 from app.controlador.AppointmentCrud import WriteAppointment
 from app.controlador.EncounterCrud import (
@@ -26,7 +26,7 @@ app.add_middleware(
         "https://appointment-write-juanita.onrender.com",
         "https://encounter-write.onrender.com",
         "https://hl7-fhir-ehr-juanita-123.onrender.com",
-        "*"  # Temporal para desarrollo, quitar en producción
+        "*"  # Solo en desarrollo
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -36,9 +36,10 @@ app.add_middleware(
 # Conexión a MongoDB
 client = MongoClient(os.getenv("MONGO_URI", "mongodb://localhost:27017"))
 patient_db = client["Cluster26"]
-patient_collection = patient_db["Patients"]
-main_db = client["JYI"]
 
+# Usar la colección correcta: 'patients' (en minúscula y plural)
+patient_collection = patient_db["patients"]
+main_db = client["JYI"]
 
 # --------------------------
 # ENDPOINTS PARA PACIENTES
@@ -79,6 +80,12 @@ async def add_patient(request: Request):
         return {"_id": patient_id}
     else:
         raise HTTPException(status_code=400, detail=f"Validation error: {status}")
+
+# (OPCIONAL) Alias para /patients
+@app.post("/patients", response_model=dict)
+async def add_patient_alias(request: Request):
+    """Alias opcional para aceptar también /patients"""
+    return await add_patient(request)
 
 # --------------------------
 # ENDPOINTS PARA CITAS
